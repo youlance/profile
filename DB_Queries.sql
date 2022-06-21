@@ -21,7 +21,10 @@ CREATE TABLE IF NOT EXISTS public.profiles
 
 TABLESPACE pg_default;
 
+
+ALTER TABLE IF EXISTS public.profiles
+    ADD COLUMN bio character varying;
+
+
 ALTER TABLE IF EXISTS public.profiles
     OWNER to postgres;
-
-

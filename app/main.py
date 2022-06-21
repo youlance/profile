@@ -25,13 +25,16 @@ class Profile(BaseModel):
     email: EmailStr
     profile_picture: Optional[str] = None
     birthdate: date
+    bio: Optional[str] = " "
 
 
-pwd = environ.get("YOULANCE")
+usr = environ.get("YOULANCE-USER")
+pwd = environ.get("YOULANCE-PASS")
+
 
 while True:
     try:
-        connection = psycopg2.connect(host='localhost', database='profiles', user='postgres', password=pwd,
+        connection = psycopg2.connect(host='localhost', database='profiles', user=usr, password=pwd,
                                       cursor_factory=RealDictCursor)
         cursor = connection.cursor()
         print("connection successful!")
@@ -51,9 +54,9 @@ async def get_profiles():
 @app.post("/profiles", status_code=status.HTTP_201_CREATED)
 async def pos(profile: Profile):
     cursor.execute(
-        """INSERT INTO profiles (username,name,email,gender,birthdate,picture) VALUES (%s,%s,%s,%s,%s,%s) RETURNING * 
+        """INSERT INTO profiles (username,name,email,gender,birthdate,picture,bio) VALUES (%s,%s,%s,%s,%s,%s,%s) RETURNING * 
         """,
-        (profile.username, profile.name, profile.email, profile.gender, profile.birthdate, profile.profile_picture))
+        (profile.username, profile.name, profile.email, profile.gender, profile.birthdate, profile.profile_picture,profile.bio))
     new_profile = cursor.fetchone()
     connection.commit()
     return {"data": new_profile}
@@ -83,9 +86,9 @@ async def delete_profile(user: str):
 @app.put("/profiles/{user}")
 async def update_profile(user: str, profile: Profile):
     cursor.execute(
-        """UPDATE profiles SET username = %s, name = %s, email = %s, gender = %s, birthdate = %s, picture = %s WHERE 
+        """UPDATE profiles SET username = %s, name = %s, email = %s, gender = %s, birthdate = %s, picture = %s, bio=%s WHERE 
         username= %s RETURNING * """,
-        (profile.username, profile.name, profile.email, profile.gender, profile.birthdate, profile.profile_picture,
+        (profile.username, profile.name, profile.email, profile.gender, profile.birthdate, profile.profile_picture, profile.bio,
          user))
     updated_profile = cursor.fetchone()
     connection.commit()
