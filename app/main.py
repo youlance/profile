@@ -9,10 +9,7 @@ from psycopg2.extras import RealDictCursor
 import time
 from fastapi.middleware.cors import CORSMiddleware
 
-
-
 app = FastAPI()
-
 
 app.add_middleware(
     CORSMiddleware,
@@ -21,9 +18,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-
 
 
 class Gender(str, Enum):
@@ -47,7 +41,6 @@ usr = environ.get("PGUSER")
 pwd = environ.get("PGPASSWORD")
 prt = environ.get("PGPORT")
 nam = environ.get("PGNAME")
-
 
 while True:
     try:
@@ -73,7 +66,8 @@ async def pos(profile: Profile):
     cursor.execute(
         """INSERT INTO profiles (username,name,email,gender,birthdate,picture,bio) VALUES (%s,%s,%s,%s,%s,%s,%s) RETURNING * 
         """,
-        (profile.username, profile.name, profile.email, profile.gender, profile.birthdate, profile.profile_picture,profile.bio))
+        (profile.username, profile.name, profile.email, profile.gender, profile.birthdate, profile.profile_picture,
+         profile.bio))
     new_profile = cursor.fetchone()
     connection.commit()
     return {"data": new_profile}
@@ -105,7 +99,8 @@ async def update_profile(user: str, profile: Profile):
     cursor.execute(
         """UPDATE profiles SET username = %s, name = %s, email = %s, gender = %s, birthdate = %s, picture = %s, bio=%s WHERE 
         username= %s RETURNING * """,
-        (profile.username, profile.name, profile.email, profile.gender, profile.birthdate, profile.profile_picture, profile.bio,
+        (profile.username, profile.name, profile.email, profile.gender, profile.birthdate, profile.profile_picture,
+         profile.bio,
          user))
     updated_profile = cursor.fetchone()
     connection.commit()
