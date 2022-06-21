@@ -28,13 +28,15 @@ class Profile(BaseModel):
     bio: Optional[str] = " "
 
 
-usr = environ.get("YOULANCE-USER")
-pwd = environ.get("YOULANCE-PASS")
+usr = environ.get("PGUSER")
+pwd = environ.get("PGPASSWORD")
+prt = environ.get("PGPORT")
+nam = environ.get("PGNAME")
 
 
 while True:
     try:
-        connection = psycopg2.connect(host='localhost', database='profiles', user=usr, password=pwd,
+        connection = psycopg2.connect(host='localhost', port=prt, database=nam, user=usr, password=pwd,
                                       cursor_factory=RealDictCursor)
         cursor = connection.cursor()
         print("connection successful!")
