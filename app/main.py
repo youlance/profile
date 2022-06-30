@@ -42,7 +42,6 @@ class Profile(BaseModel):
 
 
 class Auther(BaseModel):
-    requested_username: str
     current_username: str
     access_token: str
 
