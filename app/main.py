@@ -1,3 +1,4 @@
+import asyncio
 from datetime import date
 from enum import Enum
 from os import stat, environ
@@ -8,6 +9,8 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import time
 from fastapi.middleware.cors import CORSMiddleware
+import httpx
+import time
 
 app = FastAPI()
 
@@ -35,6 +38,13 @@ class Profile(BaseModel):
     profile_picture: Optional[str] = None
     birthdate: date
     bio: Optional[str] = " "
+    access_token: str
+
+
+class Auther(BaseModel):
+    requested_username: str
+    current_username: str
+    access_token: str
 
 
 usr = environ.get("PGUSER")
@@ -54,6 +64,15 @@ while True:
         time.sleep(2)
 
 
+async def authenticator(username, access_token):
+    r = httpx.post(url=r'http://193.107.20.225:8081/auth', data={"username": username, "access_token": access_token})
+    if r.is_success is True:
+        return True
+    else:
+        return False
+
+
+# For debugging. delete in profuction
 @app.get("/profiles")
 async def get_profiles():
     cursor.execute(""" SELECT * FROM profiles """)
@@ -62,48 +81,60 @@ async def get_profiles():
 
 
 @app.post("/profiles", status_code=status.HTTP_201_CREATED)
-async def pos(profile: Profile):
-    cursor.execute(
-        """INSERT INTO profiles (username,name,email,gender,birthdate,picture,bio) VALUES (%s,%s,%s,%s,%s,%s,%s) RETURNING * 
-        """,
-        (profile.username, profile.name, profile.email, profile.gender, profile.birthdate, profile.profile_picture,
-         profile.bio))
-    new_profile = cursor.fetchone()
-    connection.commit()
-    return {"data": new_profile}
+async def post(profile: Profile):
+    if authenticator(profile.username, profile.access_token) is False:
+        return Response(status_code=status.HTTP_401_UNAUTHORIZED)
+    else:
+        cursor.execute(
+            """INSERT INTO profiles (username,name,email,gender,birthdate,picture,bio) VALUES (%s,%s,%s,%s,%s,%s,%s) RETURNING * 
+            """,
+            (profile.username, profile.name, profile.email, profile.gender, profile.birthdate, profile.profile_picture,
+             profile.bio))
+        new_profile = cursor.fetchone()
+        connection.commit()
+        return {"data": new_profile}
 
 
 @app.get("/profiles/{user}")
-async def get_profile(user: str):
-    cursor.execute("""SELECT * FROM profiles WHERE username = %s""", (user,))
-    profile = cursor.fetchone()
-    if not profile:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id:{user} was not found!")
+async def get_profile(user: str, auth: Auther):
+    if authenticator(auth.current_username, auth.access_token) is False:
+        return Response(status_code=status.HTTP_401_UNAUTHORIZED)
+    else:
+        cursor.execute("""SELECT * FROM profiles WHERE username = %s""", (user,))
+        profile = cursor.fetchone()
+        if not profile:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id:{user} was not found!")
 
-    return {"profile": profile}
+        return {"profile": profile}
 
 
 @app.delete("/profiles/{user}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_profile(user: str):
-    cursor.execute("""DELETE FROM profiles WHERE username = %s RETURNING *  """, (user,))
-    deleted_profile = cursor.fetchone()
-    connection.commit()
-    if not deleted_profile:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id:{user} was not found!")
+async def delete_profile(user: str, auth: Auther):
+    if authenticator(auth.current_username, auth.access_token) is False:
+        return Response(status_code=status.HTTP_401_UNAUTHORIZED)
+    else:
+        cursor.execute("""DELETE FROM profiles WHERE username = %s RETURNING *  """, (user,))
+        deleted_profile = cursor.fetchone()
+        connection.commit()
+        if not deleted_profile:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id:{user} was not found!")
 
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @app.put("/profiles/{user}")
 async def update_profile(user: str, profile: Profile):
-    cursor.execute(
-        """UPDATE profiles SET username = %s, name = %s, email = %s, gender = %s, birthdate = %s, picture = %s, bio=%s WHERE 
-        username= %s RETURNING * """,
-        (profile.username, profile.name, profile.email, profile.gender, profile.birthdate, profile.profile_picture,
-         profile.bio,
-         user))
-    updated_profile = cursor.fetchone()
-    connection.commit()
-    if not updated_profile:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id:{user} was not found!")
-    return {'profile': updated_profile}
+    if authenticator(profile.username, profile.access_token) is False:
+        return Response(status_code=status.HTTP_401_UNAUTHORIZED)
+    else:
+        cursor.execute(
+            """UPDATE profiles SET username = %s, name = %s, email = %s, gender = %s, birthdate = %s, picture = %s, bio=%s WHERE 
+            username= %s RETURNING * """,
+            (profile.username, profile.name, profile.email, profile.gender, profile.birthdate, profile.profile_picture,
+             profile.bio,
+             user))
+        updated_profile = cursor.fetchone()
+        connection.commit()
+        if not updated_profile:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id:{user} was not found!")
+        return {'profile': updated_profile}
