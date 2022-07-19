@@ -1,18 +1,18 @@
-import asyncio
+import time
 from datetime import date
 from enum import Enum
-from os import stat, environ
+from os import environ
 from typing import Optional
-from fastapi import FastAPI, Response, status, HTTPException
-from fastapi import File, UploadFile
-from pydantic import BaseModel, EmailStr, FilePath, Field
-from fastapi.responses import HTMLResponse
-import psycopg2
-from psycopg2.extras import RealDictCursor
-import time
-from fastapi.middleware.cors import CORSMiddleware
 import httpx
-import time
+import psycopg2
+from fastapi import FastAPI, status, Form, UploadFile, Depends
+from fastapi import Response
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from psycopg2.extras import RealDictCursor
+from pydantic import BaseModel, ValidationError
+from pydantic import EmailStr, Field
 
 app = FastAPI()
 
@@ -37,7 +37,7 @@ class Profile(BaseModel):
     name: str
     gender: Gender = Field("not_given", alias='gender')
     email: EmailStr
-    profile_picture: Optional[UploadFile] = File(None)
+    profile_picture: Optional[str] = " "
     birthdate: date
     bio: Optional[str] = " "
     access_token: str
@@ -81,20 +81,30 @@ async def get_profiles():
     return {"Profiles": profiles}
 
 
+async def checker(data: str = Form(...)):
+    try:
+        model = Profile.parse_raw(data)
+    except ValidationError as e:
+        raise HTTPException(detail=jsonable_encoder(e.errors()), status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
+    return model
+
+
 @app.post("/profiles", status_code=status.HTTP_201_CREATED)
-async def post(profile: Profile):
+async def post(profile: Profile = Depends(checker), picture: UploadFile | None = None):
     if authenticator(profile.username, profile.access_token) is False:
         return Response(status_code=status.HTTP_401_UNAUTHORIZED)
     else:
-        if profile.profile_picture is not None:
-            picture = await profile.profile_picture.read()
-            with open(f'./picurefiles/{profile.username}.jpg','w') as f:
-                f.write(picture)
+
+        if picture is not None:
+            pic = await picture.read()
+            with open(f'./picurefiles/{profile.username}.jpg', 'wb') as f:
+                f.write(pic)
 
         cursor.execute(
             """INSERT INTO profiles (username,name,email,gender,birthdate,picture,bio) VALUES (%s,%s,%s,%s,%s,%s,%s) RETURNING * 
             """,
-            (profile.username, profile.name, profile.email, profile.gender, profile.birthdate, f'/picurefiles/{profile.username}.jpg',
+            (profile.username, profile.name, profile.email, profile.gender, profile.birthdate,
+             f'/picurefiles/{profile.username}.jpg',
              profile.bio))
         new_profile = cursor.fetchone()
         connection.commit()
@@ -129,22 +139,21 @@ async def delete_profile(user: str, auth: Auther):
 
 
 @app.put("/profiles/{user}")
-async def update_profile(user: str, profile: Profile):
+async def update_profile(user: str, profile: Profile = Depends(checker), picture: UploadFile | None = None):
     if authenticator(profile.username, profile.access_token) is False:
         return Response(status_code=status.HTTP_401_UNAUTHORIZED)
     else:
 
-        if profile.profile_picture is not None:
-            picture = await profile.profile_picture.read()
-            with open(f'./picurefiles/{profile.username}.jpg','w') as f:
-                f.write(picture)
+        if picture is not None:
+            pic = await picture.read()
+            with open(f'./picurefiles/{profile.username}.jpg', 'wb') as f:
+                f.write(pic)
 
-
-        
         cursor.execute(
             """UPDATE profiles SET username = %s, name = %s, email = %s, gender = %s, birthdate = %s, picture = %s, bio=%s WHERE 
             username= %s RETURNING * """,
-            (profile.username, profile.name, profile.email, profile.gender, profile.birthdate, f'/picurefiles/{profile.username}.jpg',
+            (profile.username, profile.name, profile.email, profile.gender, profile.birthdate,
+             f'/picurefiles/{profile.username}.jpg',
              profile.bio,
              user))
         updated_profile = cursor.fetchone()
