@@ -4,7 +4,9 @@ from enum import Enum
 from os import stat, environ
 from typing import Optional
 from fastapi import FastAPI, Response, status, HTTPException
+from fastapi import File, UploadFile
 from pydantic import BaseModel, EmailStr, FilePath, Field
+from fastapi.responses import HTMLResponse
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import time
@@ -35,7 +37,7 @@ class Profile(BaseModel):
     name: str
     gender: Gender = Field("not_given", alias='gender')
     email: EmailStr
-    profile_picture: Optional[str] = None
+    profile_picture: Optional[UploadFile] = File(None)
     birthdate: date
     bio: Optional[str] = " "
     access_token: str
@@ -84,10 +86,15 @@ async def post(profile: Profile):
     if authenticator(profile.username, profile.access_token) is False:
         return Response(status_code=status.HTTP_401_UNAUTHORIZED)
     else:
+        if profile.profile_picture is not None:
+            picture = await profile.profile_picture.read()
+            with open(f'./picurefiles/{profile.username}','w') as f:
+                f.write(picture)
+
         cursor.execute(
             """INSERT INTO profiles (username,name,email,gender,birthdate,picture,bio) VALUES (%s,%s,%s,%s,%s,%s,%s) RETURNING * 
             """,
-            (profile.username, profile.name, profile.email, profile.gender, profile.birthdate, profile.profile_picture,
+            (profile.username, profile.name, profile.email, profile.gender, profile.birthdate, f'/picurefiles/{profile.username}',
              profile.bio))
         new_profile = cursor.fetchone()
         connection.commit()
@@ -126,10 +133,18 @@ async def update_profile(user: str, profile: Profile):
     if authenticator(profile.username, profile.access_token) is False:
         return Response(status_code=status.HTTP_401_UNAUTHORIZED)
     else:
+
+        if profile.profile_picture is not None:
+            picture = await profile.profile_picture.read()
+            with open(f'./picurefiles/{profile.username}','w') as f:
+                f.write(picture)
+
+
+        
         cursor.execute(
             """UPDATE profiles SET username = %s, name = %s, email = %s, gender = %s, birthdate = %s, picture = %s, bio=%s WHERE 
             username= %s RETURNING * """,
-            (profile.username, profile.name, profile.email, profile.gender, profile.birthdate, profile.profile_picture,
+            (profile.username, profile.name, profile.email, profile.gender, profile.birthdate, f'/picurefiles/{profile.username}',
              profile.bio,
              user))
         updated_profile = cursor.fetchone()
