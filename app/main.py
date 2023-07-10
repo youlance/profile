@@ -52,10 +52,12 @@ usr = environ.get("PGUSER")
 pwd = environ.get("PGPASSWORD")
 prt = environ.get("PGPORT")
 nam = environ.get("PGNAME")
+adr = environ.get("PGADDRESS") 
+aus = environ.get("AUTHSERVICEADDR")
 
 while True:
     try:
-        connection = psycopg2.connect(host='localhost', port=prt, database=nam, user=usr, password=pwd,
+        connection = psycopg2.connect(host=adr, port=prt, database=nam, user=usr, password=pwd,
                                       cursor_factory=RealDictCursor)
         cursor = connection.cursor()
         print("connection successful!")
@@ -66,14 +68,14 @@ while True:
 
 
 async def authenticator(username, access_token):
-    r = httpx.post(url=r'http://193.107.20.225:8081/auth', data={"username": username, "access_token": access_token})
+    r = httpx.post(url=aus, data={"username": username, "access_token": access_token})
     if r.is_success is True:
         return True
     else:
         return False
 
 
-# For debugging. delete in profuction
+# For debugging. delete in production
 @app.get("/profiles")
 async def get_profiles():
     cursor.execute(""" SELECT * FROM profiles """)

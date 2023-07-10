@@ -27,6 +27,7 @@ RUN pip install --no-cache-dir -r /code/requirements.txt
 COPY ./app /code/app
 
 
+ENV PGADDRESS=localhost
 ENV PGUSER=Mehrdad
 ENV PGPASSWORD=password
 ENV PGPORT=5433
@@ -34,5 +35,7 @@ ENV PGNAME=profiles
 
 ENV APPPORT=8084
 ENV APPHOST=0.0.0.0
- 
+ENV AUTHSERVICEADDR=example.com
+
+
 CMD uvicorn app.main:app --host ${APPHOST} --port ${APPPORT}
