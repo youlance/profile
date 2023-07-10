@@ -15,13 +15,15 @@ fi
 #   exit 1
 #fi
 
-DB_USER="${POSTGRES_USER:=mehrdad}"
+DB_USER="${PGUSER:=mehrdad}"
 
-DB_PASSWORD="${POSTGRES_PASSWORD:=password}"
+DB_PASSWORD="${PGPASSWORD:=password}"
 
-DB_NAME="${POSTGRES_DB:=profiles}"
+DB_NAME="${PGNAME:=profiles}"
 
-DB_PORT="${POSTGRES_PORT:=5433}"
+DB_PORT="${PGPORT:=5433}"
+
+export DB_ADDR="${PGADDRESS:=localhost}"
 
 if [[ -z "${SKIP_DOCKER}" ]]
 then
@@ -34,25 +36,19 @@ then
      postgres -N 999
 fi
 
-
-export PGPASSWORD="${DB_PASSWORD}"
-export PGUSER="${DB_USER}"
-export PGPORT="${DB_PORT}"
-export PGNAME="${DB_NAME}"
-
 # Keep pinging Postgres until it's ready to accept commands
-until psql -h "0.0.0.0" -U "${DB_USER}" -p "${DB_PORT}" -d "${DB_NAME}" -c '\q'; do
+until psql -h "${DB_ADDR}" -U "${DB_USER}" -p "${DB_PORT}" -d "${DB_NAME}" -c '\q'; do
     >&2 echo "Postgres is still unavailable - sleeping"
     sleep 1
 done
 
 >&2 echo "Postgres is up and running on port ${DB_PORT} - running migrations now!"
 
-psql -h "0.0.0.0" -U "${DB_USER}" -p "${DB_PORT}" -d "${DB_NAME}" -c '\i DB_Queries.sql; \q'
+psql -h "${DB_ADDR}" -U "${DB_USER}" -p "${DB_PORT}" -d "${DB_NAME}" -c '\i DB_Queries.sql; \q'
 
 
-export DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@localhost:${DB_PORT}/${DB_NAME}
+# export DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@localhost:${DB_PORT}/${DB_NAME}
 #sqlx database create
 #sqlx migrate run
 
-#>&2 echo "Postgres has been migrated, ready to go!"
+echo "Postgres has been migrated, ready to go!"

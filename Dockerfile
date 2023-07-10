@@ -1,13 +1,11 @@
 FROM python:3.9-alpine
 
-
 WORKDIR /code
-
  
 COPY ./requirements.txt /code/requirements.txt
 
 RUN apk update && apk upgrade
-RUN apk add libpq-dev python3-dev gcc
+RUN apk add libpq-dev python3-dev postgresql-client
 RUN apk add --no-cache bash\
                        pkgconfig \
                        gcc \
@@ -26,7 +24,6 @@ RUN pip install --no-cache-dir -r /code/requirements.txt
  
 COPY ./app /code/app
 
-
 ENV PGADDRESS=localhost
 ENV PGUSER=Mehrdad
 ENV PGPASSWORD=password
@@ -38,4 +35,4 @@ ENV APPHOST=0.0.0.0
 ENV AUTHSERVICEADDR=example.com
 
 
-CMD uvicorn app.main:app --host ${APPHOST} --port ${APPPORT}
+CMD uvicorn app.main:app --host $APPHOST --port $APPPORT
