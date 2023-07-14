@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -x
+#set -x
 set -eo pipefail
 
 if ! [ -x "$(command -v psql)" ]; then
@@ -51,4 +51,4 @@ psql -h "${DB_ADDR}" -U "${DB_USER}" -p "${DB_PORT}" -d "${DB_NAME}" -c '\i DB_Q
 #sqlx database create
 #sqlx migrate run
 
-echo "Postgres has been migrated, ready to go!"
+>&2 echo "Postgres has been migrated, ready to go!"

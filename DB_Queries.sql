@@ -18,5 +18,5 @@ CREATE TABLE IF NOT EXISTS public.profiles
 
 TABLESPACE pg_default;
 
-ALTER TABLE IF EXISTS public.profiles
-    OWNER to mehrdad;
+-- ALTER TABLE IF EXISTS public.profiles
+--     OWNER to mehrdad;
